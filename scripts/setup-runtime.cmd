@@ -20,9 +20,9 @@ if errorlevel 1 exit /b 1
 :dependencies
 pushd "%REVERSI_PLUGIN%"
 if "%~1"=="--lock-only" (
-  "%REVERSI_NODE%" "%REVERSI_NODE_DIR%\node_modules\npm\bin\npm-cli.js" install --package-lock-only --ignore-scripts --no-audit --no-fund
+  "%REVERSI_NODE%" "%REVERSI_NODE_DIR%\node_modules\npm\bin\npm-cli.js" install --package-lock-only --ignore-scripts --no-audit --no-fund --cache "%REVERSI_PLUGIN%\.runtime\npm-cache"
 ) else (
-  "%REVERSI_NODE%" "%REVERSI_NODE_DIR%\node_modules\npm\bin\npm-cli.js" ci --ignore-scripts --no-audit --no-fund
+  "%REVERSI_NODE%" "%REVERSI_NODE_DIR%\node_modules\npm\bin\npm-cli.js" ci --ignore-scripts --no-audit --no-fund --cache "%REVERSI_PLUGIN%\.runtime\npm-cache"
 )
 set "REVERSI_EXIT=%ERRORLEVEL%"
 popd
