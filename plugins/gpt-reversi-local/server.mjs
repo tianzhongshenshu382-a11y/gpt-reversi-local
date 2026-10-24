@@ -7,7 +7,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { z } from 'zod';
 import { GameStore } from './game.mjs';
 
-export const URI = 'ui://gpt-reversi/board-distribution-v021.html';
+export const URI = 'ui://gpt-reversi/board-distribution-v022.html';
 const boardSchema = {
   gameId: z.string().uuid(), revision: z.number().int(), turn: z.enum(['B', 'W', 'finished']),
   rows: z.array(z.string()).length(8), black: z.number().int(), white: z.number().int(), legalMoves: z.array(z.string()),
@@ -22,7 +22,7 @@ const guarded = action => async args => {
 };
 
 export function createMcpServer(store, html) {
-  const server = new McpServer({ name: 'GPT対戦オセロ・各自PC版', version: '0.2.1' }, {
+  const server = new McpServer({ name: 'GPT対戦オセロ・各自PC版', version: '0.2.2' }, {
     instructions: 'Human plays black by clicking the app. When the app sends a turn request, read that game with reversi_read_board, choose a legal white move yourself, and submit it with reversi_play_white using the observed revision and a new commandId. Continue only if white still has the turn because black passed. Stop once black has the turn or the game finishes. There is no opponent AI or inference API in this server. Do not create a new game on a turn request.',
   });
   registerAppResource(server, 'reversi-board', URI, {}, async () => ({ contents: [{
@@ -55,7 +55,7 @@ export async function startServer({ port = 0, host = '127.0.0.1', enableTestHarn
   const httpServer = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     if (req.method === 'GET' && url.pathname === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ name: 'gpt-reversi-local', version: '0.2.1', inferenceApi: false })); return;
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ name: 'gpt-reversi-local', version: '0.2.2', inferenceApi: false })); return;
     }
     if (req.method === 'GET' && url.pathname === '/') {
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }).end('GPT Reversi MCP test server. Endpoint: /mcp. No inference API. Games are temporary.'); return;
