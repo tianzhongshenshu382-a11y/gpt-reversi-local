@@ -33,7 +33,7 @@ async function log(chunk) {
   if (match && !endpoint) {
     endpoint = `${match[0]}/mcp`;
     clearTimeout(startup);
-    await writeFile(new URL('connection.json', localDir), JSON.stringify({ localEndpoint: `${instance.url}/mcp`, endpoint, temporary: true, inferenceApiUsed: false, version: '0.2.1' }, null, 2));
+    await writeFile(new URL('connection.json', localDir), JSON.stringify({ localEndpoint: `${instance.url}/mcp`, endpoint, temporary: true, inferenceApiUsed: false, version: '0.2.2' }, null, 2));
     console.log(`\nChatGPT MCP URL: ${endpoint}\nAuthentication: None\nName: GPT Reversi - own PC test\n\nAdd this URL as a custom MCP server in your own ChatGPT.\nThe old author's URL is never used. Restarting changes this temporary URL.`);
   }
 }
