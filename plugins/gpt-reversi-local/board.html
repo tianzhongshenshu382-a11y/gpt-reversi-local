@@ -26,7 +26,7 @@ function render() {
     return button;
   }));
   $('retry').disabled = busy;
-  $('detail').textContent = `各自PC版 0.2.1 · 自動応答の接続: ${ready ? '利用可能' : '未接続'}${state ? ` · 盤面版 ${state.revision}` : ''}`;
+  $('detail').textContent = `各自PC版 0.2.2 · 自動応答の接続: ${ready ? '利用可能' : '未接続'}${state ? ` · 盤面版 ${state.revision}` : ''}`;
 }
 function receive(response) {
   const next = response?.structuredContent;
