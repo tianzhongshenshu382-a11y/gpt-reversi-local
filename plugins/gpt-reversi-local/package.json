@@ -1,9 +1,10 @@
 {
   "name": "gpt-reversi-local",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": { "start": "node server.mjs", "stdio": "node stdio.mjs", "test": "node --test integration.test.mjs distribution.test.mjs" },
-  "dependencies": { "@modelcontextprotocol/sdk": "1.32.1", "@modelcontextprotocol/ext-apps": "1.7.5", "zod": "3.25.76" }
+  "dependencies": { "@modelcontextprotocol/sdk": "1.32.1", "@modelcontextprotocol/ext-apps": "1.7.5", "zod": "3.25.76" },
+  "overrides": { "forwarded": "0.2.0" }
 }
