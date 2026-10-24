@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gpt-reversi-local",
+  "version": "0.2.1",
+  "description": "Play Reversi against this chat's GPT with rules and state running on your own PC. Windows distribution experiment.",
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "GPT対戦オセロ 各自PC版",
+        "shortDescription": "盤面とルールを各自のPCで動かす接続検証用オセロ",
+        "developerName": "GPT連携ゲーム",
+        "category": "Productivity",
+        "capabilities": ["Interactive", "Read", "Write"],
+        "defaultPrompt": ["オセロを開いて。私は黒、あなたは白です。"]
+      }
+    }
+  }
+}
