@@ -1,0 +1,66 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GPT対戦オセロ</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#203c35;background:#f3f6f2}*{box-sizing:border-box}body{margin:0;padding:20px 14px}main{max-width:580px;margin:auto}h1{font-size:23px;margin:0 0 8px}p{font-size:14px;line-height:1.7}.scores{display:flex;gap:10px;margin:18px 0}.score{flex:1;background:white;border:1px solid #dbe5dd;border-radius:10px;padding:12px}.score strong{float:right;font-size:22px}.status{background:#e0ece4;border-radius:9px;padding:12px;font-size:14px;margin:16px 0}.board-wrap{display:grid;grid-template-columns:18px 1fr;gap:5px}.labels{grid-column:2;display:grid;grid-template-columns:repeat(8,1fr);text-align:center;font-size:11px;color:#65786c}.rows{display:grid;grid-template-rows:repeat(8,1fr);align-items:center;text-align:center;font-size:11px;color:#65786c}.board{display:grid;grid-template-columns:repeat(8,1fr);background:#294f42;border:5px solid #294f42;border-radius:7px;gap:1px}.cell{aspect-ratio:1;border:0;background:#3b775e;padding:9%;position:relative;cursor:pointer}.cell:disabled{cursor:default}.cell:focus-visible{outline:3px solid #f7d986;z-index:1}.disc{width:100%;height:100%;border-radius:50%;box-shadow:1px 3px 4px #0005}.B{background:radial-gradient(circle at 35% 25%,#414843,#101612 75%)}.W{background:radial-gradient(circle at 35% 25%,#fff,#d4ddd4 85%)}.hint{width:15%;height:15%;background:#d3e8b5;border-radius:50%;position:absolute;left:42.5%;top:42.5%}.error{color:#972c25;white-space:pre-wrap}button.retry{padding:9px 12px;border:1px solid #b8cabb;background:white;border-radius:7px;color:#244a3c}small{display:block;color:#62796a;font-size:11px;margin-top:16px}#retry[hidden]{display:none}
+</style></head><body><main><h1>GPT対戦オセロ</h1><p>あなたは黒、GPTは白です。薄緑の点を押すと、GPTへ自動で手番を渡します。</p>
+<div class="scores"><div class="score">● あなた <strong id="black">—</strong></div><div class="score">○ GPT <strong id="white">—</strong></div></div>
+<div id="status" class="status" role="status">ChatGPTへの接続を確認しています</div>
+<div class="board-wrap"><div class="labels" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span></div><div class="rows" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div><div id="board" class="board" role="group" aria-label="オセロ盤"></div></div>
+<p id="error" class="error" role="alert"></p><button id="retry" class="retry" hidden>GPTへの依頼を再試行</button><small id="detail">接続待ち</small><details><summary style="font-size:11px;margin-top:12px">接続ログ</summary><pre id="diagnostic" style="white-space:pre-wrap;font-size:10px"></pre></details>
+</main><script type="module">
+/* INLINE_HANDOFF */
+/* INLINE_BRIDGE */
+const $ = id => document.getElementById(id);
+let state = null, busy = false, ready = false, synced = false, initialSyncRequested = false, pollTimer = null, polls = 0;
+function fail(error) { $('error').textContent = error.message || String(error); $('retry').hidden = !ready || state?.turn !== 'W'; }
+function render() {
+  $('black').textContent = state?.black ?? '—'; $('white').textContent = state?.white ?? '—';
+  $('status').textContent = !ready ? 'ChatGPTへの接続待ちです' : !state || !synced ? '最新の盤面を確認しています' : busy ? '着手を送信しています' : state.turn === 'W' ? 'GPTへ手番を依頼しました。応答を待っています' : state.turn === 'finished' ? `対局終了 · ${state.black === state.white ? '引き分け' : state.black > state.white ? 'あなたの勝ち' : 'GPTの勝ち'}` : 'あなた（黒）の手番です';
+  const cells = state?.rows.join('').split('') || Array(64).fill('.');
+  $('board').replaceChildren(...cells.map((v, i) => {
+    const cell = 'ABCDEFGH'[i % 8] + (Math.floor(i / 8) + 1), can = ready && synced && !busy && state?.turn === 'B' && state.legalMoves.includes(cell);
+    const button = document.createElement('button'); button.className = 'cell'; button.disabled = !can;
+    button.setAttribute('aria-label', cell + (v === 'B' ? ' 黒' : v === 'W' ? ' 白' : can ? ' 打てます' : ' 空き'));
+    if (v !== '.') { const disc = document.createElement('div'); disc.className = 'disc ' + v; button.append(disc); }
+    else if (can) { const hint = document.createElement('div'); hint.className = 'hint'; button.append(hint); }
+    button.onclick = () => { $('error').textContent = ''; $('retry').hidden = true; handoff.play(state, cell); };
+    return button;
+  }));
+  $('retry').disabled = busy;
+  $('detail').textContent = `各自PC版 0.2.1 · 自動応答の接続: ${ready ? '利用可能' : '未接続'}${state ? ` · 盤面版 ${state.revision}` : ''}`;
+}
+function receive(response) {
+  const next = response?.structuredContent;
+  if (!next?.gameId || !Array.isArray(next.rows)) return;
+  if (state && (next.gameId !== state.gameId || next.revision < state.revision)) return;
+  const changed = !state || next.revision !== state.revision;
+  state = next;
+  if (changed) { $('error').textContent = ''; $('retry').hidden = true; }
+  render();
+  // The host may deliver its cached original tool result after initialization.
+  // Fetch once in either event order before enabling any black move.
+  if (ready && !initialSyncRequested) { initialSyncRequested = true; void refresh(); }
+  clearTimeout(pollTimer);
+  // White tool results are not necessarily routed to the already mounted app.
+  if (ready && state.turn === 'W' && polls < 60) pollTimer = setTimeout(refresh, 3000);
+}
+const bridge = createBridge(receive, event => { $('diagnostic').textContent += JSON.stringify(event) + '\n'; });
+const handoff = createHandoff({ callTool: (name, args) => bridge.callTool(name, args), sendMessage: text => bridge.sendMessage(text), update: s => { polls = 0; receive({ structuredContent: s }); }, setBusy: value => { busy = value; render(); }, onError: fail });
+async function refresh() {
+  if (!state || !ready) return;
+  try {
+    polls++;
+    const response = await bridge.callTool('reversi_read_board', { gameId: state.gameId });
+    if (response?.isError) throw Error(response.content?.[0]?.text || '盤面を更新できませんでした。');
+    synced = true;
+    receive(response);
+    if (polls >= 60 && state.turn === 'W') fail(Error('白の着手がまだ届いていません。チャットで状況を確認してください。'));
+  } catch (error) { fail(error); }
+}
+$('retry').onclick = () => { $('error').textContent = ''; handoff.retry(state); };
+render();
+try {
+  await bridge.connect(); ready = true; render();
+  if (state && !initialSyncRequested) { initialSyncRequested = true; await refresh(); }
+} catch (error) { fail(error); render(); }
+window.addEventListener('pagehide', () => clearTimeout(pollTimer));
+</script></body></html>
