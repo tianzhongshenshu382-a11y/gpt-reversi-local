@@ -1,0 +1,21 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>自動依頼・ローカル接続試験</title><style>body{margin:0;background:#edf1ec;color:#203c35;font:14px system-ui}header{padding:14px;background:#fff6d9;border-bottom:1px solid #d5c997}h1{font-size:17px;margin:0 0 6px}p{margin:0;line-height:1.6}iframe{border:0;width:100%;height:900px}pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:10px;background:white;font-size:11px}</style>
+<header><h1>ローカル接続試験（ChatGPT本体には未接続）</h1><p>黒を打つと手番の依頼を受信した記録が下に出ます。この試験画面ではGPTは起動しません。</p><p id="status" role="status">接続準備中</p></header><iframe id="app" title="試験用オセロ盤" src="/test-board"></iframe><pre id="log"></pre>
+<script type="module">
+let rpcId=0,game=null;const frame=document.getElementById('app'),log=document.getElementById('log');
+const record=value=>{log.textContent+=JSON.stringify(value)+'\n';};
+async function tool(name,args){const response=await fetch('/mcp',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:++rpcId,method:'tools/call',params:{name,arguments:args}})});const data=await response.json();if(data.error)throw Error(data.error.message);return data.result;}
+window.addEventListener('message',async event=>{
+ if(event.source!==frame.contentWindow||event.origin!==location.origin||event.data?.jsonrpc!=='2.0')return;
+ const message=event.data;const reply=result=>frame.contentWindow.postMessage({jsonrpc:'2.0',id:message.id,result},location.origin);
+ try{
+  if(message.method==='ui/initialize')reply({protocolVersion:'2026-01-26',hostInfo:{name:'LOCAL MOCK HOST — not ChatGPT',version:'0.1.0'},hostCapabilities:{message:{text:{}},serverTools:{}},hostContext:{displayMode:'inline'}});
+  else if(message.method==='ui/notifications/initialized'){
+   game=await tool('reversi_open_game',{});frame.contentWindow.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:game},location.origin);document.getElementById('status').textContent='試験用ホストに接続しました。黒を打てます。';
+  }else if(message.method==='tools/call'){
+   const result=await tool(message.params.name,message.params.arguments);reply(result);if(message.params.name==='reversi_human_move')record({event:'black-saved',revision:result.structuredContent?.revision});
+  }else if(message.method==='ui/message'){
+   record({event:'follow-up-received-by-MOCK-host',content:message.params.content,realGptStarted:false});document.getElementById('status').textContent='黒の着手 → 手番の依頼を自動受信。GPT本体の起動はこの試験の対象外です。';reply({});
+  }
+ }catch(error){frame.contentWindow.postMessage({jsonrpc:'2.0',id:message.id,error:{code:-32000,message:error.message}},location.origin);record({error:error.message});}
+});
+</script></html>
