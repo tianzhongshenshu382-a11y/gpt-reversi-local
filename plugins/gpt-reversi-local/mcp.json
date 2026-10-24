@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "reversi-local": {
+      "type": "stdio",
+      "command": "cmd.exe",
+      "args": ["/d", "/c", "${PLUGIN_ROOT}/run-stdio.cmd"],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}
