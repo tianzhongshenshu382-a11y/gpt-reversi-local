@@ -16,10 +16,16 @@ for (const name of runtimeFiles) {
   files.push({ path: name, bytes: data.length, sha256: createHash('sha256').update(data).digest('hex') });
 }
 await writeFile(new URL('./manifest.json', import.meta.url), JSON.stringify({
-  name: 'reversi-in-chat', version: '0.1.1', status: 'integration-unverified',
+  name: 'reversi-in-chat', version: '0.1.1', status: 'host-confirmation-required',
   entry: 'START.md', runtimeFiles: files, externalGameServer: false,
   inferenceApi: false, builtInOpponent: false,
   requiredHostFeatures: ['interactive HTML with JavaScript', 'window.openai.sendFollowUpMessage', 'same-chat HTML redisplay after a GPT turn'],
-  verifiedOnWebChatGPT: { boardDisplay: false, automaticWhiteTurn: false, rightPaneAutoUpdate: false },
+  verifiedOnWebChatGPT: {
+    boardDisplay: true, testedDisplayMode: 'inline',
+    hostConfirmationShownAfterBlackMove: true,
+    whiteMoveChosenAfterConfirmation: true, whiteMoveAppliedToBoard: false,
+    automaticWhiteTurn: false, rightPaneAutoUpdate: false,
+    latestWhiteRenderError: 'TimeoutError: MCP sandbox RPC timed out.',
+  },
 }, null, 2) + '\n');
 console.log(`Built in-chat game.html (${Buffer.byteLength(html)} bytes), no runtime dependencies`);
