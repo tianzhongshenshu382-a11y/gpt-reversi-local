@@ -1,0 +1,177 @@
+<div id="gpt-reversi-in-chat">
+  <style>
+    #gpt-reversi-in-chat{--rv-ink:light-dark(#203c35,#e5eee8);--rv-board:light-dark(#3b775e,#305f4c);--rv-line:light-dark(#294f42,#183d2d);--rv-panel:light-dark(#e0ece4,#263f34);--rv-hint:light-dark(#d3e8b5,#c7e399);font-family:system-ui,sans-serif;color:var(--rv-ink);max-width:580px;margin:auto;padding:8px;color-scheme:light dark}
+    #gpt-reversi-in-chat *{box-sizing:border-box}#gpt-reversi-in-chat h2{margin:0 0 12px;font-size:20px;font-weight:500}#gpt-reversi-in-chat .rv-scores{display:flex;justify-content:space-between;gap:12px;margin:14px 0}#gpt-reversi-in-chat .rv-status{padding:12px;background:var(--rv-panel);border-radius:8px;margin:12px 0;line-height:1.6}#gpt-reversi-in-chat .rv-wrap{display:grid;grid-template-columns:18px 1fr;gap:5px}#gpt-reversi-in-chat .rv-files{grid-column:2;display:grid;grid-template-columns:repeat(8,1fr);text-align:center}#gpt-reversi-in-chat .rv-ranks{display:grid;grid-template-rows:repeat(8,1fr);align-items:center;text-align:center}#gpt-reversi-in-chat .rv-board{display:grid;grid-template-columns:repeat(8,1fr);background:var(--rv-line);border:4px solid var(--rv-line);border-radius:6px;gap:1px}#gpt-reversi-in-chat .rv-cell{aspect-ratio:1;min-width:0;position:relative;border:0;background:var(--rv-board);padding:9%;cursor:var(--cursor-interaction,pointer)}#gpt-reversi-in-chat .rv-cell:disabled{cursor:default}#gpt-reversi-in-chat .rv-disc{width:100%;height:100%;border-radius:50%;box-shadow:1px 3px 4px #0005}#gpt-reversi-in-chat .rv-B{background:radial-gradient(circle at 35% 25%,#414843,#101612 75%)}#gpt-reversi-in-chat .rv-W{background:radial-gradient(circle at 35% 25%,#fff,#d4ddd4 85%)}#gpt-reversi-in-chat .rv-hint{width:15%;height:15%;background:var(--rv-hint);border-radius:50%;position:absolute;left:42.5%;top:42.5%}#gpt-reversi-in-chat .rv-error{color:light-dark(#972c25,#ffb7ae);white-space:pre-wrap}#gpt-reversi-in-chat .rv-detail{font-size:12px;line-height:1.7;overflow-wrap:anywhere}#gpt-reversi-in-chat details pre{white-space:pre-wrap;font-size:12px}#gpt-reversi-in-chat [hidden]{display:none}
+  </style>
+  <h2>GPT対戦オセロ</h2>
+  <div class="rv-scores"><span>● あなた <strong data-rv="black">2</strong></span><span>○ GPT <strong data-rv="white">2</strong></span></div>
+  <div data-rv="status" class="rv-status" role="status">盤面を準備しています</div>
+  <div class="rv-wrap"><div class="rv-files" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span></div><div class="rv-ranks" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div><div class="rv-board" data-rv="board" role="group" aria-label="オセロ盤"></div></div>
+  <p data-rv="error" class="rv-error" role="alert"></p>
+  <button type="button" class="btn" data-rv="retry" hidden>GPTへの依頼を再試行</button>
+  <p class="rv-detail" data-rv="detail"></p>
+  <details><summary>接続の確認</summary><pre data-rv="diagnostic"></pre></details>
+  <script type="application/json" id="gpt-reversi-bootstrap">null</script>
+  <script type="application/json" id="gpt-reversi-command">null</script>
+</div>
+<script>
+(() => {
+const files = 'ABCDEFGH';
+function initialBoard() {
+  const b = Array(64).fill('.');
+  b[27] = b[36] = 'W'; b[28] = b[35] = 'B';
+  return b;
+}
+function flips(board, index, side) {
+  if (board[index] !== '.') return [];
+  const x = index % 8, y = Math.floor(index / 8), enemy = side === 'B' ? 'W' : 'B';
+  const result = [];
+  for (const [dx, dy] of [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]]) {
+    let cx = x + dx, cy = y + dy, line = [];
+    while (cx >= 0 && cx < 8 && cy >= 0 && cy < 8 && board[cy * 8 + cx] === enemy) {
+      line.push(cy * 8 + cx); cx += dx; cy += dy;
+    }
+    if (line.length && cx >= 0 && cx < 8 && cy >= 0 && cy < 8 && board[cy * 8 + cx] === side) result.push(...line);
+  }
+  return result;
+}
+function cellName(index) { return files[index % 8] + (Math.floor(index / 8) + 1); }
+function cellIndex(cell) {
+  if (!/^[A-H][1-8]$/.test(cell)) throw Error('Invalid cell');
+  return (Number(cell[1]) - 1) * 8 + files.indexOf(cell[0]);
+}
+function legalMoves(board, side) {
+  return board.flatMap((_, i) => flips(board, i, side).length ? [cellName(i)] : []);
+}
+function applyMove(board, cell, side) {
+  const i = cellIndex(cell), captured = flips(board, i, side);
+  if (!captured.length) throw Error('Illegal move: ' + cell);
+  const next = board.slice(); next[i] = side; captured.forEach(j => { next[j] = side; });
+  return { board: next, flipped: captured.map(cellName) };
+}
+
+
+function newSession(gameId) {
+  return { format: 'reversi-in-chat-1', gameId, revision: 0, rows: rows(initialBoard()), turn: 'B', history: [], receipts: [] };
+}
+function rows(board) { return Array.from({ length: 8 }, (_, i) => board.slice(i * 8, i * 8 + 8).join('')); }
+function validateSession(state) {
+  if (state?.format !== 'reversi-in-chat-1' || typeof state.gameId !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(state.gameId) || !Number.isInteger(state.revision) || state.revision < 0 || state.revision > 60 || !['B', 'W', 'finished'].includes(state.turn) || !Array.isArray(state.rows) || state.rows.length !== 8 || state.rows.some(r => !/^[.BW]{8}$/.test(r)) || !Array.isArray(state.history) || state.history.length !== state.revision || !Array.isArray(state.receipts) || state.receipts.length > 60) throw Error('盤面データが不正です。');
+  if (state.turn !== 'finished' && !legalMoves(state.rows.join('').split(''), state.turn).length) throw Error('手番と盤面が一致しません。');
+  if (state.turn === 'finished' && ['B', 'W'].some(side => legalMoves(state.rows.join('').split(''), side).length)) throw Error('対局はまだ終了していません。');
+  return state;
+}
+function view(state) {
+  validateSession(state);
+  const flat = state.rows.join('');
+  return { ...state, black: [...flat].filter(v => v === 'B').length, white: [...flat].filter(v => v === 'W').length, legalMoves: state.turn === 'finished' ? [] : legalMoves([...flat], state.turn) };
+}
+function move(state, cell, side) {
+  validateSession(state);
+  if (state.turn !== side) throw Error('手番が違います。');
+  const result = applyMove([...state.rows.join('')], cell, side);
+  const other = side === 'B' ? 'W' : 'B';
+  const turn = legalMoves(result.board, other).length ? other : legalMoves(result.board, side).length ? side : 'finished';
+  const next = { ...state, rows: rows(result.board), turn, revision: state.revision + 1, history: [...state.history, { side, cell, flipped: result.flipped, source: side === 'W' ? 'chat-gpt' : 'human' }] };
+  return validateSession(next);
+}
+function applyWhiteCommand(state, command) {
+  validateSession(state);
+  if (!command || command.gameId !== state.gameId || typeof command.commandId !== 'string' || !/^[a-zA-Z0-9-]{1,100}$/.test(command.commandId)) throw Error('別対局または不正な白の応答です。');
+  const existing = state.receipts.find(r => r.commandId === command.commandId);
+  if (existing) {
+    if (existing.cell !== command.cell || existing.expectedRevision !== command.expectedRevision) throw Error('応答IDが別の着手に再利用されています。');
+    return state;
+  }
+  if (command.expectedRevision !== state.revision) throw Error('古い盤面への白の応答です。');
+  const next = move(state, command.cell, 'W');
+  next.receipts = [...next.receipts, { commandId: command.commandId, cell: command.cell, expectedRevision: command.expectedRevision }];
+  return next;
+}
+function turnPrompt(state) {
+  if (state.turn !== 'W') throw Error('白の手番ではありません。');
+  const current = view(state);
+  return '外部サーバーを使わないオセロの白の手番です。あなた自身が次の一手を考えてください。内蔵AIや外部生成AI APIで代用しないでください。新規対局は作らず、次の盤面をそのまま使ってください。\n' +
+    JSON.stringify({ type: 'reversi-in-chat-white-turn', state, legalMoves: current.legalMoves }) + '\n' +
+    '白の合法手を一つ選び、配布物の render_turn.py で表示中の game.html の gpt-reversi-bootstrap をこの state に、gpt-reversi-command を {gameId,expectedRevision,cell,commandId} に更新してください。expectedRevision は上記 revision、commandId は新しい英数字とハイフンのIDです。ルール処理と反映はHTML内のJavaScriptが行います。更新した同じHTMLを、最初に使ったChatGPT内の表示方法で再表示してください。初回にVisualizeで表示した場合は同じファイルのvisualize参照を返してください。別のMCPやサーバーを追加しないでください。通常の文章で手を回答するだけでは盤面は更新されません。追加の承認・再表示クリックが必要だった場合、黒クリックだけで成功したと扱わないでください。';
+}
+
+"use strict";
+const root = document.getElementById('gpt-reversi-in-chat');
+const $ = name => root.querySelector('[data-rv="' + name + '"]');
+const bootstrap = JSON.parse(root.querySelector('#gpt-reversi-bootstrap').textContent);
+const command = JSON.parse(root.querySelector('#gpt-reversi-command').textContent);
+let state = bootstrap ? validateSession(bootstrap) : newSession(crypto.randomUUID());
+let error = '', busy = false, sentRevision = -1, sent = false;
+const logs = [];
+const log = entry => { logs.push(entry); $('diagnostic').textContent = JSON.stringify(logs.slice(-12), null, 2); };
+function restore(candidate) {
+  if (!candidate) return;
+  try {
+    validateSession(candidate);
+    if (!bootstrap || candidate.gameId === state.gameId && candidate.revision > state.revision) state = candidate;
+  } catch { log({ rejectedSavedState: true }); }
+}
+restore(window.openai?.widgetState?.privateContent?.reversi);
+function persist() {
+  const save = window.openai?.setWidgetState;
+  if (typeof save !== 'function') return;
+  try {
+    const answer = save({ modelContent: view(state), privateContent: { reversi: state } });
+    if (answer?.catch) answer.catch(() => log({ statePersistence: 'failed' }));
+  } catch { log({ statePersistence: 'failed' }); }
+}
+function render() {
+  const current = view(state);
+  $('black').textContent = current.black;
+  $('white').textContent = current.white;
+  $('status').textContent = busy ? 'GPTへ盤面を渡しています' : state.turn === 'B' ? 'あなた（黒）の手番です' : state.turn === 'finished' ? '対局終了 · ' + (current.black === current.white ? '引き分け' : current.black > current.white ? 'あなたの勝ち' : 'GPTの勝ち') : sent ? 'GPTの応答と盤面への反映を待っています' : '白の手番です。GPTへの接続を確認してください';
+  $('error').textContent = error;
+  $('retry').hidden = state.turn !== 'W' || busy || !error;
+  $('detail').textContent = '画面内実行版 0.1.0 · 盤面版 ' + state.revision;
+  root.dataset.revision = String(state.revision);
+  root.dataset.turn = state.turn;
+  root.dataset.rows = state.rows.join('/');
+  root.dataset.gameId = state.gameId;
+  $('board').replaceChildren(...[...state.rows.join('')].map((v, i) => {
+    const cell = cellName(i), can = state.turn === 'B' && !busy && current.legalMoves.includes(cell);
+    const button = document.createElement('button'); button.className = 'rv-cell'; button.type = 'button'; button.disabled = !can;
+    button.setAttribute('aria-label', cell + (v === 'B' ? ' 黒' : v === 'W' ? ' 白' : can ? ' 打てます' : ' 空き'));
+    if (v !== '.') { const disc = document.createElement('span'); disc.className = 'rv-disc rv-' + v; disc.style.display = 'block'; button.append(disc); }
+    else if (can) { const hint = document.createElement('span'); hint.className = 'rv-hint'; button.append(hint); }
+    button.onclick = () => playBlack(cell);
+    return button;
+  }));
+}
+async function askGpt() {
+  if (state.turn !== 'W' || busy || sentRevision === state.revision) return;
+  busy = true; error = ''; render();
+  try {
+    if (typeof window.openai?.sendFollowUpMessage !== 'function') throw Error('この表示方法には、現在のチャットのGPTへ手番を送る機能がありません。黒の着手は画面内で反映しましたが、自動応答は成立していません。');
+    const prompt = turnPrompt(state);
+    log({ action: 'request-gpt', gameId: state.gameId, revision: state.revision, method: 'window.openai.sendFollowUpMessage' });
+    await window.openai.sendFollowUpMessage({ prompt, title: 'GPTに白の一手を依頼' });
+    sentRevision = state.revision; sent = true;
+    log({ action: 'host-request-resolved', revision: state.revision, gptMoveApplied: false });
+  } catch (cause) { error = cause.message || String(cause); log({ action: 'request-failed', message: error }); }
+  finally { busy = false; render(); }
+}
+function playBlack(cell) {
+  try { state = move(state, cell, 'B'); sent = false; error = ''; persist(); render(); if (state.turn === 'W') void askGpt(); }
+  catch (cause) { error = cause.message; render(); }
+}
+$('retry').onclick = () => { sentRevision = -1; void askGpt(); };
+window.addEventListener('openai:set_globals', event => {
+  restore(event.detail?.globals?.widgetState?.privateContent?.reversi);
+  render();
+});
+if (command) {
+  try { state = applyWhiteCommand(state, command); persist(); log({ action: 'white-applied', revision: state.revision, cell: command.cell }); }
+  catch (cause) { error = cause.message; log({ action: 'white-rejected', message: error }); }
+}
+log({ runtime: 'in-chat', externalGameServer: false, inferenceApi: false, hostFollowUp: typeof window.openai?.sendFollowUpMessage === 'function', hostState: typeof window.openai?.setWidgetState === 'function' });
+render();
+if (command && !error && state.turn === 'W') void askGpt();
+
+})();
+</script>
