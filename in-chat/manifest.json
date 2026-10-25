@@ -1,0 +1,31 @@
+{
+  "name": "reversi-in-chat",
+  "version": "0.1.1",
+  "status": "integration-unverified",
+  "entry": "START.md",
+  "runtimeFiles": [
+    {
+      "path": "game.html",
+      "bytes": 16459,
+      "sha256": "583ec2fa0f129cc3d1e6f6e159e2d4968d2fa891d2bbb3257c28695b8c871e0b"
+    },
+    {
+      "path": "render_turn.py",
+      "bytes": 3972,
+      "sha256": "f2bcde169abdc042c3d4dc982b6cbaaafd0ea5858791693a2719c9eec0d1d1c7"
+    }
+  ],
+  "externalGameServer": false,
+  "inferenceApi": false,
+  "builtInOpponent": false,
+  "requiredHostFeatures": [
+    "interactive HTML with JavaScript",
+    "window.openai.sendFollowUpMessage",
+    "same-chat HTML redisplay after a GPT turn"
+  ],
+  "verifiedOnWebChatGPT": {
+    "boardDisplay": false,
+    "automaticWhiteTurn": false,
+    "rightPaneAutoUpdate": false
+  }
+}
