@@ -1,7 +1,7 @@
 {
   "name": "reversi-in-chat",
   "version": "0.1.1",
-  "status": "integration-unverified",
+  "status": "host-confirmation-required",
   "entry": "START.md",
   "runtimeFiles": [
     {
@@ -24,8 +24,13 @@
     "same-chat HTML redisplay after a GPT turn"
   ],
   "verifiedOnWebChatGPT": {
-    "boardDisplay": false,
+    "boardDisplay": true,
+    "testedDisplayMode": "inline",
+    "hostConfirmationShownAfterBlackMove": true,
+    "whiteMoveChosenAfterConfirmation": true,
+    "whiteMoveAppliedToBoard": false,
     "automaticWhiteTurn": false,
-    "rightPaneAutoUpdate": false
+    "rightPaneAutoUpdate": false,
+    "latestWhiteRenderError": "TimeoutError: MCP sandbox RPC timed out."
   }
 }
