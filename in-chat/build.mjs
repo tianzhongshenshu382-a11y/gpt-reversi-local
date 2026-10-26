@@ -23,7 +23,10 @@ await writeFile(new URL('./manifest.json', import.meta.url), JSON.stringify({
   verifiedOnWebChatGPT: {
     boardDisplay: true, testedDisplayMode: 'inline',
     hostConfirmationShownAfterBlackMove: true,
-    whiteMoveChosenAfterConfirmation: true, whiteMoveAppliedToBoard: false,
+    whiteMoveChosenAfterConfirmation: true, whiteMoveAppliedToBoard: true,
+    whiteMoveVisibleOnlyAfterManualReload: true,
+    basicPromptOnlyFollowUpAlsoRequiredConfirmation: true,
+    widgetStatePersistenceWorkedInLatestProbe: false,
     automaticWhiteTurn: false, rightPaneAutoUpdate: false,
     latestWhiteRenderError: 'TimeoutError: MCP sandbox RPC timed out.',
   },
