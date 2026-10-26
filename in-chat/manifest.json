@@ -28,7 +28,10 @@
     "testedDisplayMode": "inline",
     "hostConfirmationShownAfterBlackMove": true,
     "whiteMoveChosenAfterConfirmation": true,
-    "whiteMoveAppliedToBoard": false,
+    "whiteMoveAppliedToBoard": true,
+    "whiteMoveVisibleOnlyAfterManualReload": true,
+    "basicPromptOnlyFollowUpAlsoRequiredConfirmation": true,
+    "widgetStatePersistenceWorkedInLatestProbe": false,
     "automaticWhiteTurn": false,
     "rightPaneAutoUpdate": false,
     "latestWhiteRenderError": "TimeoutError: MCP sandbox RPC timed out."
