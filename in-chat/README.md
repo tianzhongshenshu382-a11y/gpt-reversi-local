@@ -98,4 +98,21 @@ Web試験はログイン済みChrome上の既存検証チャットで実施。�
 
 この再試験により、初期表示は一度成功した。しかし、黒クリック後の確認なしの応答、白の盤面反映、右側での自動更新は完成していない。送信確認を省くための未確認の設定や、ChatGPTの内部API・承認回避は配布物に含めない。`manifest.json` もこの確認範囲を記録する。
 
+## 2026-10-26：送信確認と再表示の切り分け
+
+オセロを変更せず、状態保存と `sendFollowUpMessage({ prompt })` の2つのボタンだけを持つ最小画面で追加試験した。後者は任意の `title` さえ指定しない、公式リファレンスの基本形。未公開の引数や内部APIは使っていない。
+
+| 確認項目 | 実測 |
+|---|---|
+| 最小画面の最初の表示 | `MCP sandbox RPC timed out` で失敗。チャットを1回再読み込みした後に表示できた |
+| 最小画面の基本形の送信API | 「追加のプロンプトを送信しますか？」が表示された。ゲーム固有の依頼文や `title` を取り除いても確認は残る。追加のテストメッセージは送信せずキャンセルした |
+| 状態保存API | `The host could not persist the widget state update`。今回の環境では保存にも失敗しており、これを自動手番開始の代用にはしていない |
+| 既存の白C5の反映 | 再読み込み後、同じ対局IDで盤面版2・黒3白3・黒手番を実際に表示。C5とD5が白であることも画面のDOMから確認 |
+| 確認なしの応答と右側の自動更新 | 未達。送信確認と手動の再読み込みを必要とした結果を、自動対戦の成功には含めない |
+| 別PC・別アカウントのURL単独起動 | 未実施。前段の条件を満たしていないため配布完成の検証へは進めていない |
+
+確認した [公式リファレンス](https://developers.openai.com/plugins/reference) には `prompt` と任意の `scrollToBottom` が記載されているが、確認を省略する引数は見つからなかった。この調査は「すべてのChatGPT環境で将来も不可能」という証明ではない。一方、今回のWeb表示方式では、配布ファイルを変更するだけで確認なしの手番送信を実現できる対応方法は確認できていない。
+
+SkillsのみのPluginは手順と資源を配布する形であり、既存の表示機能に不足する手番開始APIを追加できるという説明はない。[Skills](https://developers.openai.com/plugins/concepts/skills)、[MCP server](https://developers.openai.com/plugins/concepts/mcp-server)、[接続とテスト](https://developers.openai.com/plugins/deploy/connect-chatgpt) も確認した。別のMCP接続を使う方式を、外部ゲームサーバーなしの方式として勝手に追加していない。各自PC版0.2.2も保持している。
+
 参考：OpenAI公式の [Visualizations](https://learn.chatgpt.com/docs/visualizations)、[HTMLファイルのプレビュー](https://learn.chatgpt.com/docs/artifacts-viewer)、[コンポーネントとチャットの通信](https://developers.openai.com/plugins/reference)。これらの機能の説明自体は、この配布物での成功を証明しない。
